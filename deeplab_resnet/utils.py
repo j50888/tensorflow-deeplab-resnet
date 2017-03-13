@@ -1,7 +1,7 @@
 from PIL import Image
 import numpy as np
 import tensorflow as tf
-noob
+
 n_classes = 2
 # colour map
 label_colours = [(0,0,0)

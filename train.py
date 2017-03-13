@@ -18,10 +18,10 @@ import numpy as np
 
 from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_preprocess, prepare_label
 
-n_classes = 21
+n_classes = 2
 
 BATCH_SIZE = 10
-DATA_DIRECTORY = '/home/VOCdevkit'
+DATA_DIRECTORY = '/tmp3/haowei/VOCdevkit/VOC2012'
 DATA_LIST_PATH = './dataset/train.txt'
 INPUT_SIZE = '321,321'
 LEARNING_RATE = 2.5e-4
@@ -150,9 +150,10 @@ def main():
     fc_w_trainable = [v for v in fc_trainable if 'weights' in v.name] # lr * 10.0
     fc_b_trainable = [v for v in fc_trainable if 'biases' in v.name] # lr * 20.0
     assert(len(all_trainable) == len(fc_trainable) + len(conv_trainable))
-    assert(len(fc_trainable) == len(fc_w_trainable) + len(fc_b_trainable))
-    
-    
+    assert(len(fc_trainable) == len(fc_w_trainable) + len(fc_b_trainable)) 
+
+    vars_restore_gist = [v for v in tf.global_variables() if not 'fc' in v.name] # Restore everything but last layer
+
     # Predictions: ignoring all predictions with labels greater or equal than n_classes
     raw_prediction = tf.reshape(raw_output, [-1, n_classes])
     label_proc = prepare_label(label_batch, tf.pack(raw_output.get_shape()[1:3]), one_hot=False) # [batch_size, h, w]
@@ -180,14 +181,15 @@ def main():
     total_summary = tf.summary.image('images', 
                                      tf.concat(2, [images_summary, labels_summary, preds_summary]), 
                                      max_outputs=args.save_num_images) # Concatenate row-wise.
-    summary_writer = tf.summary.FileWriter(args.snapshot_dir,
-                                           graph=tf.get_default_graph())
-   
+    #summary_writer = tf.summary.FileWriter(args.snapshot_dir,
+    #                                       graph=tf.get_default_graph())
+
     # Define loss and optimisation parameters.
     base_lr = tf.constant(args.learning_rate)
     step_ph = tf.placeholder(dtype=tf.float32, shape=())
     learning_rate = tf.scalar_mul(base_lr, tf.pow((1 - step_ph / args.num_steps), args.power))
-    
+    tf.summary.scalar('learning_rate', learning_rate)
+
     opt_conv = tf.train.MomentumOptimizer(learning_rate, args.momentum)
     opt_fc_w = tf.train.MomentumOptimizer(learning_rate * 10.0, args.momentum)
     opt_fc_b = tf.train.MomentumOptimizer(learning_rate * 20.0, args.momentum)
@@ -210,6 +212,13 @@ def main():
     sess = tf.Session(config=config)
     init = tf.global_variables_initializer()
     
+	# Log variables
+    summary_writer = tf.summary.FileWriter(args.snapshot_dir, sess.graph) # MG
+    tf.summary.scalar("reduced_loss", reduced_loss) # MG
+    for v in conv_trainable + fc_w_trainable + fc_b_trainable: # Add histogram to all variables
+        tf.summary.histogram(v.name.replace(":","_"),v)
+    merged_summary_op = tf.summary.merge_all() # MG
+
     sess.run(init)
     
     # Saver for storing checkpoints of the model.
@@ -217,7 +226,7 @@ def main():
     
     # Load variables if the checkpoint is provided.
     if args.restore_from is not None:
-        loader = tf.train.Saver(var_list=restore_var)
+        loader = tf.train.Saver(var_list=vars_restore_gist)
         load(loader, sess, args.restore_from)
     
     # Start queue threads.
