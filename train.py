@@ -32,7 +32,7 @@ RANDOM_SEED = 7902
 RESTORE_FROM = './finetune_baseline_archi_snapshots/model.ckpt-20000'
 SAVE_NUM_IMAGES = 2
 SAVE_PRED_EVERY = 1000
-SNAPSHOT_DIR = './again_finetune_baseline_archi_snapshots/'
+SNAPSHOT_DIR = './batch5_lr25e4_seed7902_finetune/'
 WEIGHT_DECAY = 0.0005
 
 
@@ -238,7 +238,7 @@ def main():
         feed_dict = { step_ph : step }
         
         if step % args.save_pred_every == 0:
-            loss_value, images, labels, preds, summary, _ = sess.run([reduced_loss, image_batch, label_batch, pred, total_summary, train_op], feed_dict=feed_dict)
+            loss_value, images, labels, preds, summary, _ = sess.run([reduced_loss, image_batch, label_batch, pred, merged_summary_op, train_op], feed_dict=feed_dict)
             summary_writer.add_summary(summary, step)
             save(saver, sess, args.snapshot_dir, step)
         else:
