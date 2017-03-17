@@ -5,6 +5,7 @@ import tensorflow as tf
 
 IGNORE_LABEL = 255
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
+DILATION_DATA_DIR='/tmp3/haowei/VOCdevkit/VOC2012/Dilation'
 
 def image_scaling(img, label):
     """
@@ -60,14 +61,14 @@ def random_crop_and_pad_image_and_labels(image, label, crop_h, crop_w, ignore_la
     
     last_image_dim = tf.shape(image)[-1]
     last_label_dim = tf.shape(label)[-1]
-    combined_crop = tf.random_crop(combined_pad, [crop_h,crop_w,4])
+    combined_crop = tf.random_crop(combined_pad, [crop_h,crop_w,5])
     img_crop = combined_crop[:, :, :last_image_dim]
     label_crop = combined_crop[:, :, last_image_dim:]
     label_crop = label_crop + ignore_label
     label_crop = tf.cast(label_crop, dtype=tf.uint8)
     
     # Set static shape so that tensorflow knows shape at compile time. 
-    img_crop.set_shape((crop_h, crop_w, 3))
+    img_crop.set_shape((crop_h, crop_w, 4))
     label_crop.set_shape((crop_h,crop_w, 1))
     return img_crop, label_crop  
 
@@ -84,6 +85,7 @@ def read_labeled_image_list(data_dir, data_list):
     f = open(data_list, 'r')
     images = []
     masks = []
+    dil_masks=[]
     for line in f:
         try:
             image, mask = line.strip("\n").split(' ')
@@ -91,7 +93,8 @@ def read_labeled_image_list(data_dir, data_list):
             image = mask = line.strip("\n")
         images.append(data_dir + image)
         masks.append(data_dir + mask)
-    return images, masks
+        dil_masks.append(DILATION_DATA_DIR+mask)
+    return images, masks, dil_masks
 
 def read_images_from_disk(input_queue, input_size, random_scale, random_mirror): # optional pre-processing arguments
     """Read one image and its corresponding mask with optional pre-processing.
@@ -111,12 +114,18 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror):
 
     img_contents = tf.read_file(input_queue[0])
     label_contents = tf.read_file(input_queue[1])
-    
+    dil_contents = tf.read_file(input_queue[2])
+
     img = tf.image.decode_jpeg(img_contents, channels=3)
     img_r, img_g, img_b = tf.split(split_dim=2, num_split=3, value=img)
     img = tf.cast(tf.concat(2, [img_b, img_g, img_r]), dtype=tf.float32)
     # Extract mean.
     img -= IMG_MEAN
+
+    dil = tf.image.decode_png(dil_contents, channels=1)
+    #dil = tf.cast(tf.not_equal(dil, 0), tf.int8)
+    dil = tf.cast(dil, tf.float32)
+    img = tf.concat(2, [img, dil])
 
     label = tf.image.decode_png(label_contents, channels=1)
     label = tf.cast(tf.not_equal(label, 0), tf.int8)
@@ -133,6 +142,7 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror):
             img, label = image_mirroring(img, label)
 
         # Randomly crops the images and labels.
+       
         img, label = random_crop_and_pad_image_and_labels(img, label, h, w, IGNORE_LABEL)
 
     return img, label
@@ -159,10 +169,11 @@ class ImageReader(object):
         self.input_size = input_size
         self.coord = coord
         
-        self.image_list, self.label_list = read_labeled_image_list(self.data_dir, self.data_list)
+        self.image_list, self.label_list, self.dil_list = read_labeled_image_list(self.data_dir, self.data_list)
         self.images = tf.convert_to_tensor(self.image_list, dtype=tf.string)
         self.labels = tf.convert_to_tensor(self.label_list, dtype=tf.string)
-        self.queue = tf.train.slice_input_producer([self.images, self.labels],
+        self.dils = tf.convert_to_tensor(self.label_list, dtype=tf.string)
+        self.queue = tf.train.slice_input_producer([self.images, self.labels, self.dils],
                                                    shuffle=input_size is not None) # not shuffling if it is val
         self.image, self.label = read_images_from_disk(self.queue, self.input_size, random_scale, random_mirror) 
 
