@@ -17,12 +17,12 @@ import numpy as np
 
 from deeplab_resnet import DeepLabResNetModel, ImageReader, prepare_label
 
-n_classes = 21
+n_classes = 2
 
-DATA_DIRECTORY = '/home/VOCdevkit'
+DATA_DIRECTORY = '/tmp3/haowei/VOCdevkit/VOC2012'
 DATA_LIST_PATH = './dataset/val.txt'
 NUM_STEPS = 1449 # Number of images in the validation set.
-RESTORE_FROM = './deeplab_resnet.ckpt'
+RESTORE_FROM = './baseline_archi_snapshots/model.ckpt-20000'
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.

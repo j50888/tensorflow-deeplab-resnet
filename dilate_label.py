@@ -2,9 +2,9 @@ import cv
 import cv2
 import numpy as np
 
-data_list='./dataset/train.txt'
+data_list='./dataset/val.txt'
 data_dir='/tmp3/haowei/VOCdevkit/VOC2012'
-write_dir='/tmp3/haowei/VOCdevkit/VOC2012/Erosion'
+write_dir='/tmp3/haowei/VOCdevkit/VOC2012/Dilation'
 KERNEL_SIZE=5
 ITER_NUM=1
 

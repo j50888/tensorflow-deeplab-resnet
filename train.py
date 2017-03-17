@@ -20,19 +20,19 @@ from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_p
 
 n_classes = 2
 
-BATCH_SIZE = 10
+BATCH_SIZE = 5
 DATA_DIRECTORY = '/tmp3/haowei/VOCdevkit/VOC2012'
 DATA_LIST_PATH = './dataset/train.txt'
 INPUT_SIZE = '321,321'
-LEARNING_RATE = 2.5e-4
+LEARNING_RATE = 2.5e-4  #default=2.5e-4
 MOMENTUM = 0.9
-NUM_STEPS = 20001
+NUM_STEPS = 100001
 POWER = 0.9
-RANDOM_SEED = 1234
-RESTORE_FROM = './deeplab_resnet.ckpt'
+RANDOM_SEED = 7902
+RESTORE_FROM = './finetune_baseline_archi_snapshots/model.ckpt-20000'
 SAVE_NUM_IMAGES = 2
 SAVE_PRED_EVERY = 1000
-SNAPSHOT_DIR = './snapshots/'
+SNAPSHOT_DIR = './again_finetune_baseline_archi_snapshots/'
 WEIGHT_DECAY = 0.0005
 
 
@@ -152,7 +152,7 @@ def main():
     assert(len(all_trainable) == len(fc_trainable) + len(conv_trainable))
     assert(len(fc_trainable) == len(fc_w_trainable) + len(fc_b_trainable)) 
 
-    vars_restore_gist = [v for v in tf.global_variables() if not 'fc' in v.name] # Restore everything but last layer
+    vars_restore_gist = [v for v in tf.global_variables() if not 'fc' in v.name and not 'conv1' in v.name] # Restore everything but last layer
 
     # Predictions: ignoring all predictions with labels greater or equal than n_classes
     raw_prediction = tf.reshape(raw_output, [-1, n_classes])
@@ -174,7 +174,7 @@ def main():
     pred = tf.expand_dims(raw_output_up, dim=3)
     
     # Image summary.
-    images_summary = tf.py_func(inv_preprocess, [image_batch, args.save_num_images], tf.uint8)
+    images_summary = tf.py_func(inv_preprocess, [image_batch[:,:,:,0:3], args.save_num_images], tf.uint8)
     labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images], tf.uint8)
     preds_summary = tf.py_func(decode_labels, [pred, args.save_num_images], tf.uint8)
     
@@ -226,7 +226,7 @@ def main():
     
     # Load variables if the checkpoint is provided.
     if args.restore_from is not None:
-        loader = tf.train.Saver(var_list=vars_restore_gist)
+        loader = tf.train.Saver(var_list=restore_var)
         load(loader, sess, args.restore_from)
     
     # Start queue threads.

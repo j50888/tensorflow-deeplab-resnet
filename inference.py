@@ -32,6 +32,8 @@ def get_arguments():
                         help="Path to the RGB image file.")
     parser.add_argument("model_weights", type=str,
                         help="Path to the file with model weights.")
+    parser.add_argument("dil_path", type=str,
+                        help="Path to the dilation image file")
     parser.add_argument("--save-dir", type=str, default=SAVE_DIR,
                         help="Where to save predicted mask.")
     return parser.parse_args()
@@ -58,7 +60,11 @@ def main():
     img = tf.cast(tf.concat(2, [img_b, img_g, img_r]), dtype=tf.float32)
     # Extract mean.
     img -= IMG_MEAN 
-    
+
+    dil = tf.image.decode_png(tf.read_file(args.dil_path), channels=1)    
+    dil = tf.cast(dil, dtype=tf.float32)
+    img = tf.cast(tf.concat(2,[img, dil]), dtype=tf.float32)
+
     # Create network.
     net = DeepLabResNetModel({'data': tf.expand_dims(img, dim=0)}, is_training=False)
 
