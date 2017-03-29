@@ -14,6 +14,8 @@ label_colours = [(0,0,0)
                 # 11=diningtable, 12=dog, 13=horse, 14=motorbike, 15=person
                 ,(0,64,0),(128,64,0),(0,192,0),(128,192,0),(0,64,128)]
                 # 16=potted plant, 17=sheep, 18=sofa, 19=train, 20=tv/monitor
+                
+inf_label_colours = [0,255]
 # image mean
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
     
@@ -40,6 +42,29 @@ def decode_labels(mask, num_images=1):
       outputs[i] = np.array(img)
     return outputs
 
+def inf_decode_labels(mask, num_images=1):
+    """Decode batch of segmentation masks.
+    
+    Args:
+      mask: result of inference after taking argmax.
+      num_images: number of images to decode from the batch.
+    
+    Returns:
+      A batch with num_images RGB images of the same size as the input. 
+    """
+    n, h, w, c = mask.shape
+    assert(n >= num_images), 'Batch size %d should be greater or equal than number of images to save %d.' % (n, num_images)
+    outputs = np.zeros((num_images, h, w), dtype=np.uint8)
+    for i in range(num_images):
+      img = Image.new('P', (len(mask[i, 0]), len(mask[i])))
+      pixels = img.load()
+      for j_, j in enumerate(mask[i, :, :, 0]):
+          for k_, k in enumerate(j):
+              if k < n_classes:
+                  pixels[k_,j_] = inf_label_colours[k]
+      outputs[i] = np.array(img)
+    return outputs
+    
 def prepare_label(input_batch, new_size, one_hot=True):
     """Resize masks and perform one-hot encoding.
 
