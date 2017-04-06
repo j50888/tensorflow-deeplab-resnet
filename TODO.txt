@@ -1,0 +1,9 @@
+1. change mask channel value from 255 to 1
+
+2. calculate test set loss when training phase
+
+3. restore RGB channel variables
+
+4. online-training
+
+5. non-rigid deformation
