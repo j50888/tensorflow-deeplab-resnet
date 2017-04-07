@@ -3,6 +3,9 @@ import os
 import numpy as np
 import tensorflow as tf
 
+#set mask channel input (0,1) or (0,255)
+MASK_INPUT=1
+
 IGNORE_LABEL = 255
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
 DILATION_DATA_DIR='/tmp3/haowei/VOCdevkit/VOC2012/Dilation'
@@ -123,7 +126,8 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror):
     img -= IMG_MEAN
 
     dil = tf.image.decode_png(dil_contents, channels=1)
-    #dil = tf.cast(tf.not_equal(dil, 0), tf.int8)
+    if MASK_INPUT==1
+        dil = tf.cast(tf.not_equal(dil, 0), tf.int8)
     dil = tf.cast(dil, tf.float32)
     img = tf.concat(2, [img, dil])
 
